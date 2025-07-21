@@ -2,3 +2,4 @@ streamlit
 vaderSentiment
 pandas
 requests
+pyspark   # Only if you use PySpark
