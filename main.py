@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import streamlit as st
+import pandas as pd
+import requests
+import time
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 API_KEY = 'pub_6ac5a2a622a6449199cc89b6bff65d13'
 BASE_URL = 'https://newsdata.io/api/1/latest'
@@ -20,6 +25,7 @@ def fetch_news(query="a", max_pages=1):
 
         response = requests.get(BASE_URL, params=params)
         if response.status_code != 200:
+            st.warning(f"API Error: {response.status_code}")
             break
 
         data = response.json()
@@ -37,14 +43,15 @@ def fetch_news(query="a", max_pages=1):
 def analyze_sentiments(df):
     analyzer = SentimentIntensityAnalyzer()
     def get_sentiment(text):
-        score = analyzer.polarity_scores(text)['compound']
+        score = analyzer.polarity_scores(str(text))['compound']
         if score >= 0.05:
             return 'Positive'
         elif score <= -0.05:
             return 'Negative'
         return 'Neutral'
-    df['sentiment'] = df['title'].fillna('') + '. ' + df['description'].fillna('')
-    df['sentiment'] = df['sentiment'].apply(get_sentiment)
+    # Combine title and description for analysis
+    df['text'] = df['title'].fillna('') + '. ' + df['description'].fillna('')
+    df['sentiment'] = df['text'].apply(get_sentiment)
     return df
 
 st.title("📰 Live News Sentiment Dashboard")
@@ -53,7 +60,7 @@ if st.button('Update News Now'):
     with st.spinner('Fetching fresh news and analyzing...'):
         articles = fetch_news(query="a", max_pages=2)
         news_df = pd.DataFrame(articles)
-        if len(news_df) > 0:
+        if not news_df.empty and "title" in news_df.columns:
             news_df = analyze_sentiments(news_df)
             st.success(f"Fetched and analyzed {len(news_df)} articles.")
             st.write(news_df[['title', 'sentiment']].head(20))
